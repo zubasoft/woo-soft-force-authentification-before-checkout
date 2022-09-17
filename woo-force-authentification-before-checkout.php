@@ -1,21 +1,21 @@
 <?php
 /*
-Plugin Name: Force Authentification Before Checkout for WooCommerce
-Description: Force customer to log in or register before checkout
-Version: 1.4.2
-Author: Luiz Bills
-Author URI: https://luizpb.com/
+Plugin Name: Soft-Force Authentification Before Checkout for WooCommerce
+Description: Soft-Force customer to log in or register before checkout
+Version: 1.0.0
+Author: Zubasoft
+Author URI: https://zubasoft.at
 
 License: GPLv3
 License URI: http://www.gnu.org/licenses/gpl-3.0.html
 
-Text Domain: wc-force-auth
+Text Domain: wc-soft-force-auth
 Domain Path: /languages
 */
 
 if ( ! defined( 'WPINC' ) ) die();
 
-class WC_Force_Auth_Before_Checkout {
+class WC_Soft_Force_Auth_Before_Checkout {
 
 	const FILE = __FILE__;
 	const URL_ARG = 'redirect_to_checkout';
@@ -48,7 +48,7 @@ class WC_Force_Auth_Before_Checkout {
 		if ( ! $this->is_woocommerce_installed() ) {
 			add_action( 'admin_notices', [ $this, 'add_admin_notice' ] );
 			return;
-		};
+		}
 
 		add_action( 'init', [ $this, 'load_plugin_textdomain' ] );
 		add_action( 'admin_notices', [ $this, 'add_donation_notice' ] );
@@ -59,7 +59,27 @@ class WC_Force_Auth_Before_Checkout {
 		add_filter( 'woocommerce_registration_redirect', [ $this, 'redirect_to_checkout' ], 100 );
 		add_filter( 'woocommerce_login_redirect', [ $this, 'redirect_to_checkout' ], 100 );
 		add_action( 'wp_head', [ $this, 'redirect_to_checkout_via_html' ] );
+
+    add_action( 'woocommerce_after_customer_login_form', [ $this, 'add_guest_login_html' ] );
 	}
+
+  public function add_guest_login_html() {
+    ?>
+    <div>
+      <h2><?php esc_html_e( 'Neukunden', 'wc-soft-force-auth' ); ?></h2>
+
+      <form method="post" class="woocommerce-form woocommerce-form-guest guest">
+        <p class="woocommerce-form-row form-row">
+            <?php esc_html_e( 'Mit dem Bestellprozess fortfahren ohne ein Kundenkonto zu erstellen. Sie können natürlich auch später jederzeit ein Kundenkonto bei uns erstellen.', 'wc-soft-force-auth' ); ?>
+        </p>
+        <p class="woocommerce-form-row form-row">
+          <button type="submit" class="woocommerce-Button woocommerce-button button woocommerce-form-guest__submit" name="guest" value="guest"><?php esc_html_e( 'Als Gast bestellen', 'wc-soft-force-auth' ); ?></button>
+        </p>
+      </form>
+
+    </div>
+    <?php
+  }
 
 	public function redirect_to_account_page () {
 		$condition = apply_filters(
@@ -92,7 +112,7 @@ class WC_Force_Auth_Before_Checkout {
 	}
 
 	public function get_alert_message () {
-		return apply_filters( 'wc_force_auth_message', __( 'Please log in or register to complete your purchase.', 'wc-force-auth' ) );
+		return apply_filters( 'wc_force_auth_message', __( 'Please log in or register to complete your purchase.', 'wc-soft-force-auth' ) );
 	}
 
 	public function add_wc_notice () {
@@ -102,14 +122,14 @@ class WC_Force_Auth_Before_Checkout {
 	}
 
 	public function load_plugin_textdomain() {
-		load_plugin_textdomain( 'wc-force-auth', false, dirname( plugin_basename( self::FILE ) ) . '/languages/' );
+		load_plugin_textdomain( 'wc-soft-force-auth', false, dirname( plugin_basename( self::FILE ) ) . '/languages/' );
 	}
 
 	public function add_admin_notice () {
 		?>
 		<div class="notice notice-error">
 			<p>
-				<?php echo esc_html__( 'You need install and activate the WooCommerce plugin.', 'wc-force-auth' ) ?>
+				<?php echo esc_html__( 'You need install and activate the WooCommerce plugin.', 'wc-soft-force-auth' ) ?>
 			</p>
 		</div>
 		<?php
@@ -129,17 +149,12 @@ class WC_Force_Auth_Before_Checkout {
 		$cookie_expires = time() + 6 * MONTH_IN_SECONDS;
 		$cookie_expires *= 1000; // because javascript use milliseconds
 		?>
-		<div id="<?php $prefix ?>donation_notice" class="notice notice-info is-dismissible">
+		<div id="<?php echo $prefix; ?>donation_notice" class="notice notice-info is-dismissible">
 			<p>
 				<?php printf(
-					esc_html__( 'Thanks for using the %s plugin! Consider making a donation to help keep this plugin always up to date.', 'wc-force-auth' ),
+					esc_html__( 'Thanks for using the %s plugin! Consider making a donation to help keep this plugin always up to date.', 'wc-soft-force-auth' ),
 					"<strong>$plugin_name</strong>"
 				); ?>
-			</p>
-			<p>
-				<a href="https://www.paypal.com/donate?hosted_button_id=29U8C2YV4BBQC&source=url" class="button button-primary">
-					<?php echo esc_html__( 'Donate', 'wc-force-auth' ); ?>
-				</a>
 			</p>
 		</div>
 		<script>
@@ -178,7 +193,7 @@ class WC_Force_Auth_Before_Checkout {
 	}
 }
 
-WC_Force_Auth_Before_Checkout::get_instance();
+WC_Soft_Force_Auth_Before_Checkout::get_instance();
 
-register_activation_hook( __FILE__, [ WC_Force_Auth_Before_Checkout::class, 'activation' ] );
-register_deactivation_hook( __FILE__, [ WC_Force_Auth_Before_Checkout::class, 'deactivation' ] );
+register_activation_hook( __FILE__, [ WC_Soft_Force_Auth_Before_Checkout::class, 'activation' ] );
+register_deactivation_hook( __FILE__, [ WC_Soft_Force_Auth_Before_Checkout::class, 'deactivation' ] );

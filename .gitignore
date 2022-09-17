@@ -1,2 +1,5 @@
 *.po~
 *.pot~
+.idea
+.git
+.github

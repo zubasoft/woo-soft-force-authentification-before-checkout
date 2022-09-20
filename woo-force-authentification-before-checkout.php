@@ -19,6 +19,7 @@ class WC_Soft_Force_Auth_Before_Checkout {
 
 	const FILE = __FILE__;
 	const URL_ARG = 'redirect_to_checkout';
+  const PLUGIN_NAME = 'wc_force_auth_';
 
 	protected static $_instance = null;
 
@@ -35,13 +36,13 @@ class WC_Soft_Force_Auth_Before_Checkout {
 	}
 
 	protected function get_login_page_url () {
-		return apply_filters( 'wc_force_auth_login_page_url',
+		return apply_filters( self::PLUGIN_NAME . 'login_page_url',
 			get_permalink( get_option( 'woocommerce_myaccount_page_id' ) )
 		);
 	}
 
 	protected function get_checkout_page_url () {
-		return apply_filters( 'wc_force_auth_checkout_page_url', wc_get_checkout_url() );
+		return apply_filters( self::PLUGIN_NAME . 'checkout_page_url', wc_get_checkout_url() );
 	}
 
 	public function init () {
@@ -61,14 +62,43 @@ class WC_Soft_Force_Auth_Before_Checkout {
 		add_action( 'wp_head', [ $this, 'redirect_to_checkout_via_html' ] );
 
     add_action( 'woocommerce_after_customer_login_form', [ $this, 'add_guest_login_html' ] );
+
+    add_action( 'admin_post_nopriv_wc_force_auth_guest_login', [$this, 'wc_force_auth_guest_login']);
 	}
 
+    public function wc_force_auth_guest_login() {
+      $nonceName = self::PLUGIN_NAME . 'guest_nonce';
+        if( isset( $_POST[$nonceName] ) &&
+            wp_verify_nonce( $_POST[$nonceName], $nonceName) ) {
+
+            $session_name = self::PLUGIN_NAME . 'guest_checkout';
+            if ( isset( $_SESSION[ $session_name ] ) ) {
+                unset( $_SESSION[ $session_name ] );
+            }
+            $_SESSION[ $session_name ] = 'guest_login';
+
+            // redirect the user to the appropriate page
+            wp_safe_redirect( add_query_arg( self::URL_ARG, '', $this->get_checkout_page_url() ) );
+            die;
+        } else {
+            wp_die( __( 'Invalid nonce specified', self::PLUGIN_NAME ), __( 'Error', self::PLUGIN_NAME ), array(
+                'response' 	=> 403
+
+            ) );
+        }
+    }
+
   public function add_guest_login_html() {
+      $wc_force_auth_guest_nonce = wp_create_nonce( self::PLUGIN_NAME . 'guest_nonce' );
+
     ?>
     <div>
       <h2><?php esc_html_e( 'Neukunden', 'wc-soft-force-auth' ); ?></h2>
 
-      <form method="post" class="woocommerce-form woocommerce-form-guest guest">
+      <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="woocommerce-form woocommerce-form-guest guest">
+        <input type="hidden" name="action" value="wc_force_auth_guest_login">
+        <input type="hidden" name="wc_force_auth_guest_nonce" value="<?php echo $wc_force_auth_guest_nonce ?>" />
+
         <p class="woocommerce-form-row form-row">
             <?php esc_html_e( 'Mit dem Bestellprozess fortfahren ohne ein Kundenkonto zu erstellen. Sie können natürlich auch später jederzeit ein Kundenkonto bei uns erstellen.', 'wc-soft-force-auth' ); ?>
         </p>
@@ -82,10 +112,13 @@ class WC_Soft_Force_Auth_Before_Checkout {
   }
 
 	public function redirect_to_account_page () {
+    $session_name = self::PLUGIN_NAME . 'guest_checkout';
+
 		$condition = apply_filters(
-			'wc_force_auth_redirect_to_account_page',
-			is_checkout() && ! is_user_logged_in()
+			self::PLUGIN_NAME . 'redirect_to_account_page',
+			is_checkout() && (!is_user_logged_in() && isset( $_SESSION[ $session_name ] ) === FALSE)
 		);
+
 		if( $condition ) {
 			wp_safe_redirect( add_query_arg( self::URL_ARG, '', $this->get_login_page_url() ) );
 			die;
@@ -112,7 +145,7 @@ class WC_Soft_Force_Auth_Before_Checkout {
 	}
 
 	public function get_alert_message () {
-		return apply_filters( 'wc_force_auth_message', __( 'Please log in or register to complete your purchase.', 'wc-soft-force-auth' ) );
+		return apply_filters( self::PLUGIN_NAME . 'message', __( 'Please log in or register to complete your purchase.', 'wc-soft-force-auth' ) );
 	}
 
 	public function add_wc_notice () {
@@ -123,6 +156,10 @@ class WC_Soft_Force_Auth_Before_Checkout {
 
 	public function load_plugin_textdomain() {
 		load_plugin_textdomain( 'wc-soft-force-auth', false, dirname( plugin_basename( self::FILE ) ) . '/languages/' );
+
+      if(!session_id()) {
+        session_start();
+      }
 	}
 
 	public function add_admin_notice () {
@@ -139,7 +176,7 @@ class WC_Soft_Force_Auth_Before_Checkout {
 		global $pagenow;
 		$plugin_data = \get_plugin_data( __FILE__ );
 		$plugin_name = $plugin_data['Name'];
-		$prefix = 'wc_force_auth_';
+		$prefix = self::PLUGIN_NAME;
 		$cookie_name = $prefix . 'donation_notice_dismissed';
 
 		if ( ! in_array( $pagenow, [ 'plugins.php', 'update-core.php' ] ) ) return;
@@ -179,12 +216,12 @@ class WC_Soft_Force_Auth_Before_Checkout {
 	}
 
 	public static function activation () {
-		$prefix = 'wc_force_auth_';
+		$prefix = self::PLUGIN_NAME;
 		delete_option( $prefix . 'donation_notice_dismissed' );
 	}
 
 	public static function deactivation () {
-		$prefix = 'wc_force_auth_';
+		$prefix = self::PLUGIN_NAME;
 		$cookie_name = $prefix . 'donation_notice_dismissed';
 		if ( isset( $_COOKIE[ $cookie_name ] ) ) {
 			unset( $_COOKIE[ $cookie_name ] );

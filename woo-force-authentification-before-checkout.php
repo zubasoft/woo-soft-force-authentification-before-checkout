@@ -92,8 +92,8 @@ class WC_Soft_Force_Auth_Before_Checkout {
       $wc_force_auth_guest_nonce = wp_create_nonce( self::PLUGIN_NAME . 'guest_nonce' );
 
     ?>
-    <div>
-      <h2><?php esc_html_e( 'Neukunden', 'wc-soft-force-auth' ); ?></h2>
+    <div class="wc-soft-force-auth">
+      <h2><?php esc_html_e( 'Ohne Kundenkonto bestellen', 'wc-soft-force-auth' ); ?></h2>
 
       <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="woocommerce-form woocommerce-form-guest guest">
         <input type="hidden" name="action" value="wc_force_auth_guest_login">
@@ -145,7 +145,7 @@ class WC_Soft_Force_Auth_Before_Checkout {
 	}
 
 	public function get_alert_message () {
-		return apply_filters( self::PLUGIN_NAME . 'message', __( 'Please log in or register to complete your purchase.', 'wc-soft-force-auth' ) );
+		return apply_filters( self::PLUGIN_NAME . 'message', __( 'Bitte melden Sie sich an, oder erstellen ein Konto, um die Bestellung abzuschließen.', 'wc-soft-force-auth' ) );
 	}
 
 	public function add_wc_notice () {

@@ -52,7 +52,6 @@ class WC_Soft_Force_Auth_Before_Checkout {
 		}
 
 		add_action( 'init', [ $this, 'load_plugin_textdomain' ] );
-		add_action( 'admin_notices', [ $this, 'add_donation_notice' ] );
 
 		add_action( 'template_redirect', [ $this, 'redirect_to_account_page' ] );
 		add_action( 'wp_head', [ $this, 'add_wc_notice' ] );
@@ -64,7 +63,26 @@ class WC_Soft_Force_Auth_Before_Checkout {
     add_action( 'woocommerce_after_customer_login_form', [ $this, 'add_guest_login_html' ] );
 
     add_action( 'admin_post_nopriv_wc_force_auth_guest_login', [$this, 'wc_force_auth_guest_login']);
-	}
+
+    // WooCommerce PayPal Plugin - Express Checkout
+    add_filter('ppcp_create_order_request_body_data', [ $this, 'wc_force_ppcp_create_order_request_body_data' ]);
+  }
+
+    function wc_force_ppcp_create_order_request_body_data(array $data): array {
+        error_log('test PayPal');
+
+        if(is_user_logged_in() === false) {
+            error_log('PayPal - set guest login');
+
+            $session_name = self::PLUGIN_NAME . 'guest_checkout';
+            if ( isset( $_SESSION[ $session_name ] ) ) {
+                unset( $_SESSION[ $session_name ] );
+            }
+            $_SESSION[ $session_name ] = 'guest_login';
+        }
+
+        return $data;
+    }
 
     public function wc_force_auth_guest_login() {
       $nonceName = self::PLUGIN_NAME . 'guest_nonce';
@@ -169,42 +187,6 @@ class WC_Soft_Force_Auth_Before_Checkout {
 				<?php echo esc_html__( 'You need install and activate the WooCommerce plugin.', 'wc-soft-force-auth' ) ?>
 			</p>
 		</div>
-		<?php
-	}
-
-	public function add_donation_notice () {
-		global $pagenow;
-		$plugin_data = \get_plugin_data( __FILE__ );
-		$plugin_name = $plugin_data['Name'];
-		$prefix = self::PLUGIN_NAME;
-		$cookie_name = $prefix . 'donation_notice_dismissed';
-
-		if ( ! in_array( $pagenow, [ 'plugins.php', 'update-core.php' ] ) ) return;
-		if ( isset( $_COOKIE[ $cookie_name ] ) ) return;
-
-		//$notice_dismissed = (int) get_option( $prefix . 'donation_notice_dismissed' );
-		$cookie_expires = time() + 6 * MONTH_IN_SECONDS;
-		$cookie_expires *= 1000; // because javascript use milliseconds
-		?>
-		<div id="<?php echo $prefix; ?>donation_notice" class="notice notice-info is-dismissible">
-			<p>
-				<?php printf(
-					esc_html__( 'Thanks for using the %s plugin! Consider making a donation to help keep this plugin always up to date.', 'wc-soft-force-auth' ),
-					"<strong>$plugin_name</strong>"
-				); ?>
-			</p>
-		</div>
-		<script>
-			window.jQuery(function ($) {
-				const dismiss_selector = '#<?php echo $prefix ?>donation_notice .notice-dismiss';
-				$(document).on('click', dismiss_selector, function (evt) {
-					const date = new Date(); date.setTime(<?php echo $cookie_expires ?>);
-        			const expires = "; expires=" + date.toUTCString();
-					const cookie = "<?php echo $cookie_name ?>=1" + expires + "; path=<?php echo admin_url(); ?>; samesite; secure";
-					document.cookie = cookie;
-				});
-			})
-		</script>
 		<?php
 	}
 
